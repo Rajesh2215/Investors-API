@@ -15,6 +15,15 @@ export interface NavUpdate {
   timestamp: Date;
 }
 
+export interface AlertUpdate {
+  type: 'alert';
+  userId: string;
+  thresholdValue: number;
+  direction: 'above' | 'below';
+  currentNav: number;
+  timestamp: Date;
+}
+
 @Injectable()
 export class NavService extends EventEmitter implements OnModuleInit, OnModuleDestroy {
   private readonly DIRTY_USERS_KEY = 'nav:dirtyUsers';
@@ -235,7 +244,22 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     this.emit('navUpdate', navUpdate);
     
     // Check threshold crossing and trigger alerts
-    await this.alertService.checkThresholdCrossing(userId, nav);
+    const triggeredAlerts = await this.alertService.checkThresholdCrossing(userId, nav);
+    
+    // Emit alert events to SSE stream
+    for (const alert of triggeredAlerts) {
+      const alertUpdate = {
+        type: 'alert',
+        userId: alert.userId,
+        thresholdValue: alert.thresholdValue,
+        direction: alert.direction,
+        currentNav: nav,
+        timestamp: new Date(),
+      };
+      
+      this.navUpdates$.next(alertUpdate);
+      this.emit('alertUpdate', alertUpdate);
+    }
   }
 
   // Public API methods
