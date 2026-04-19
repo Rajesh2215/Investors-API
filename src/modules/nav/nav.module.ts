@@ -4,9 +4,10 @@ import { NavService } from './nav.service';
 import { PriceModule } from '../price/price.module';
 import { HoldingModule } from '../holding/holding.module';
 import { AssetModule } from '../asset/asset.module';
+import { AlertModule } from '../alert/alert.module';
 
 @Module({
-  imports: [PriceModule, HoldingModule, AssetModule],
+  imports: [PriceModule, HoldingModule, AssetModule, AlertModule],
   controllers: [NavController],
   providers: [NavService],
   exports: [NavService],

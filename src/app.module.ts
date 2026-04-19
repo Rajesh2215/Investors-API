@@ -9,6 +9,7 @@ import { HoldingModule } from './modules/holding/holding.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
 import { PriceModule } from './modules/price/price.module';
 import { NavModule } from './modules/nav/nav.module';
+import { AlertModule } from './modules/alert/alert.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { NavModule } from './modules/nav/nav.module';
     TransactionModule,
     PriceModule,
     NavModule,
+    AlertModule,
   ],
 })
 export class AppModule {}

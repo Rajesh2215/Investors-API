@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import { PriceService, PriceUpdate } from '../price/price.service';
 import { HoldingService } from '../holding/holding.service';
 import { AssetService } from '../asset/asset.service';
+import { AlertService } from '../alert/alert.service';
 import { debounceTime, Subject, Observable } from 'rxjs';
 
 export interface NavUpdate {
@@ -29,13 +30,14 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     private readonly priceService: PriceService,
     private readonly holdingService: HoldingService,
     private readonly assetService: AssetService,
+    private readonly alertService: AlertService,
   ) {
     super();
   }
 
   async onModuleInit() {
     console.log('Initializing NAV service...');
-    this.listenToPriceUpdates();
+    await this.listenToPriceUpdates();
     this.scheduleNavRecalculation();
   }
 
@@ -222,7 +224,7 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     }
   }
 
-  private emitNavUpdate(userId: string, nav: number) {
+  private async emitNavUpdate(userId: string, nav: number) {
     const navUpdate: NavUpdate = {
       userId,
       nav,
@@ -231,6 +233,9 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
 
     this.navUpdates$.next(navUpdate);
     this.emit('navUpdate', navUpdate);
+    
+    // Check threshold crossing and trigger alerts
+    await this.alertService.checkThresholdCrossing(userId, nav);
   }
 
   // Public API methods
