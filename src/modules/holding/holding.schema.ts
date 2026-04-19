@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type HoldingDocument = Holding & Document;
 
@@ -8,7 +8,7 @@ export class Holding {
   @Prop({ required: true })
   userId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Asset' })
   assetId: string;
 
   @Prop({ required: true, type: Number, min: 0 })

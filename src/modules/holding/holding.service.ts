@@ -33,7 +33,8 @@ export class HoldingService {
       // Update existing holding
       existingHolding.quantity += quantity;
       existingHolding.updatedAt = new Date();
-      return existingHolding.save();
+      const savedHolding = await existingHolding.save();
+      return this.holdingModel.findById(savedHolding._id).populate('assetId').exec() as Promise<Holding>;
     } else {
       // Create new holding
       const newHolding = new this.holdingModel({
@@ -42,7 +43,8 @@ export class HoldingService {
         quantity,
         updatedAt: new Date(),
       });
-      return newHolding.save();
+      const savedHolding = await newHolding.save();
+      return this.holdingModel.findById(savedHolding._id).populate('assetId').exec() as Promise<Holding>;
     }
   }
 
@@ -66,24 +68,27 @@ export class HoldingService {
     // If quantity becomes 0, remove the holding record entirely
     if (existingHolding.quantity === 0) {
       await this.holdingModel.deleteOne({ userId, assetId });
+      // Return the holding with populated asset before deletion
+      return this.holdingModel.findById(existingHolding._id).populate('assetId').exec() as Promise<Holding>;
     } else {
-      return existingHolding.save();
+      const savedHolding = await existingHolding.save();
+      return this.holdingModel.findById(savedHolding._id).populate('assetId').exec() as Promise<Holding>;
     }
   }
 
   async findByUserId(userId: string): Promise<Holding[]> {
-    return this.holdingModel.find({ userId }).exec();
+    return this.holdingModel.find({ userId }).populate('assetId').exec();
   }
 
   async findByUserIdAndAssetId(userId: string, assetId: string): Promise<Holding | null> {
-    return this.holdingModel.findOne({ userId, assetId }).exec();
+    return this.holdingModel.findOne({ userId, assetId }).populate('assetId').exec();
   }
 
   async findOne(id: string): Promise<Holding | null> {
-    return this.holdingModel.findById(id).exec();
+    return this.holdingModel.findById(id).populate('assetId').exec();
   }
 
   async findByAssetId(assetId: string): Promise<Holding[]> {
-    return this.holdingModel.find({ assetId }).exec();
+    return this.holdingModel.find({ assetId }).populate('assetId').exec();
   }
 }

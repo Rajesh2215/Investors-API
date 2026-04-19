@@ -16,6 +16,7 @@ import { Subject, Observable } from 'rxjs';
 export interface NavUpdate {
   userId: string;
   nav: number;
+  prices: { symbol: string; price: number }[];
   timestamp: Date;
 }
 
@@ -32,6 +33,7 @@ export interface NavEvent {
   type: 'nav' | 'alert';
   userId: string;
   nav?: number;
+  prices?: { symbol: string; price: number }[];
   thresholdValue?: number;
   direction?: 'above' | 'below';
   currentNav?: number;
@@ -249,10 +251,14 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
   }
 
   private async emitNavUpdate(userId: string, nav: number) {
+    // Get current crypto prices
+    const prices = await this.getCurrentPrices();
+    
     const navUpdate: NavEvent = {
       type: 'nav',
       userId,
       nav,
+      prices,
       timestamp: new Date(),
     };
 
@@ -270,11 +276,31 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
         thresholdValue: alert.thresholdValue,
         direction: alert.direction,
         currentNav: nav,
+        prices,
         timestamp: new Date(),
       };
       
       this.navUpdates$.next(alertUpdate);
       this.emit('alertUpdate', alertUpdate);
+    }
+  }
+
+  private async getCurrentPrices(): Promise<{ symbol: string; price: number }[]> {
+    try {
+      const symbols = ['BTC', 'ETH', 'SOL'];
+      const prices = [];
+      
+      for (const symbol of symbols) {
+        const price = await this.priceService.getLatestPrice(symbol);
+        if (price !== null) {
+          prices.push({ symbol, price });
+        }
+      }
+      
+      return prices;
+    } catch (error) {
+      console.error('Error getting current prices:', error);
+      return [];
     }
   }
 
