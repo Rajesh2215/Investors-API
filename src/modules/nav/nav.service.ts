@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
@@ -7,7 +7,11 @@ import { PriceService, PriceUpdate } from '../price/price.service';
 import { HoldingService } from '../holding/holding.service';
 import { AssetService } from '../asset/asset.service';
 import { AlertService } from '../alert/alert.service';
-import { debounceTime, Subject, Observable } from 'rxjs';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { NavSnapshotDocument } from './nav-snapshot.schema';
+import { Cron } from '@nestjs/schedule';
+import { Subject, Observable } from 'rxjs';
 
 export interface NavUpdate {
   userId: string;
@@ -24,13 +28,23 @@ export interface AlertUpdate {
   timestamp: Date;
 }
 
+export interface NavEvent {
+  type: 'nav' | 'alert';
+  userId: string;
+  nav?: number;
+  thresholdValue?: number;
+  direction?: 'above' | 'below';
+  currentNav?: number;
+  timestamp: Date;
+}
+
 @Injectable()
 export class NavService extends EventEmitter implements OnModuleInit, OnModuleDestroy {
   private readonly DIRTY_USERS_KEY = 'nav:dirtyUsers';
   private readonly NAV_KEY_PREFIX = 'nav:';
   private readonly THROTTLE_MS = 500; // 500ms throttle
   
-  private navUpdates$ = new Subject<NavUpdate>();
+  private navUpdates$ = new Subject<NavEvent>();
   private recalculationTimeout: NodeJS.Timeout | null = null;
   private isRecalculating = false;
 
@@ -40,6 +54,7 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     private readonly holdingService: HoldingService,
     private readonly assetService: AssetService,
     private readonly alertService: AlertService,
+    @InjectModel('NavSnapshot') private readonly navSnapshotModel: Model<NavSnapshotDocument>,
   ) {
     super();
   }
@@ -234,7 +249,8 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
   }
 
   private async emitNavUpdate(userId: string, nav: number) {
-    const navUpdate: NavUpdate = {
+    const navUpdate: NavEvent = {
+      type: 'nav',
       userId,
       nav,
       timestamp: new Date(),
@@ -248,7 +264,7 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     
     // Emit alert events to SSE stream
     for (const alert of triggeredAlerts) {
-      const alertUpdate = {
+      const alertUpdate: NavEvent = {
         type: 'alert',
         userId: alert.userId,
         thresholdValue: alert.thresholdValue,
@@ -274,7 +290,96 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
     }
   }
 
-  getNavUpdates(): Observable<NavUpdate> {
+  getNavUpdates(): Observable<NavEvent> {
     return this.navUpdates$.asObservable();
+  }
+
+  // NAV Snapshot Methods
+  async createSnapshot(userId: string, nav: number): Promise<NavSnapshotDocument> {
+    try {
+      const snapshot = new this.navSnapshotModel({
+        userId,
+        nav,
+        timestamp: new Date(),
+      });
+
+      const savedSnapshot = await snapshot.save();
+      console.log(`\ud83d\udcf8 NAV snapshot created for user ${userId}: ${nav} at ${new Date()}`);
+      return savedSnapshot;
+    } catch (error) {
+      console.error(`Failed to create NAV snapshot for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async getNavHistory(userId: string, limit: number = 100): Promise<NavSnapshotDocument[]> {
+    try {
+      return await this.navSnapshotModel
+        .find({ userId })
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .exec();
+    } catch (error) {
+      console.error(`Failed to get NAV history for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async getNavHistoryByDateRange(
+    userId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<NavSnapshotDocument[]> {
+    try {
+      return await this.navSnapshotModel
+        .find({
+          userId,
+          timestamp: { $gte: startDate, $lte: endDate },
+        })
+        .sort({ timestamp: -1 })
+        .exec();
+    } catch (error) {
+      console.error(`Failed to get NAV history for user ${userId} by date range:`, error);
+      throw error;
+    }
+  }
+
+  @Cron('*/1 * * * *') // Every 1 minute
+  async createScheduledSnapshots(): Promise<void> {
+    try {
+      console.log('\ud83d\udd50 Starting scheduled NAV snapshot creation...');
+      await this.createSnapshotForAllUsers();
+    } catch (error) {
+      console.error('Failed to create scheduled snapshots:', error);
+    }
+  }
+
+  private async createSnapshotForAllUsers(): Promise<void> {
+    try {
+      // Get all users who have NAV data in Redis
+      const userIds = await this.getAllUsersWithNav();
+      
+      for (const userId of userIds) {
+        const nav = await this.getLatestNav(userId);
+        if (nav !== null) {
+          await this.createSnapshot(userId, nav);
+        }
+      }
+      
+      console.log(`\ud83d\udcf8 Created snapshots for ${userIds.length} users`);
+    } catch (error) {
+      console.error('Failed to create snapshots for all users:', error);
+    }
+  }
+
+  private async getAllUsersWithNav(): Promise<string[]> {
+    try {
+      // For demo purposes, return known users from the system
+      // In a real implementation, you might scan Redis keys or maintain a user list
+      return ['69e4843bcf2b98e041c3fe97']; // Sample user ID
+    } catch (error) {
+      console.error('Failed to get users with NAV:', error);
+      return [];
+    }
   }
 }

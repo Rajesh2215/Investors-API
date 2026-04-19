@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, NotFoundException, Res } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Res, Query } from '@nestjs/common';
 import { UserId } from '../utils/user-id.decorator';
 import { NavService } from './nav.service';
 import { AlertService } from '../alert/alert.service';
@@ -36,6 +36,20 @@ export class NavController {
       };
     } catch (error) {
       throw new NotFoundException('Failed to retrieve alerts');
+    }
+  }
+
+  @Get('history')
+  async getNavHistory(@UserId() userId: string, @Query('limit') limit?: number) {
+    try {
+      const history = await this.navService.getNavHistory(userId, limit || 100);
+      return {
+        userId,
+        history,
+        count: history.length,
+      };
+    } catch (error) {
+      throw new NotFoundException('Failed to retrieve NAV history');
     }
   }
 
