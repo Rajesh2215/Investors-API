@@ -63,8 +63,12 @@ export class HoldingService {
     existingHolding.quantity -= quantity;
     existingHolding.updatedAt = new Date();
 
-    // If quantity becomes 0, we keep the record with 0 quantity for history
-    return existingHolding.save();
+    // If quantity becomes 0, remove the holding record entirely
+    if (existingHolding.quantity === 0) {
+      await this.holdingModel.deleteOne({ userId, assetId });
+    } else {
+      return existingHolding.save();
+    }
   }
 
   async findByUserId(userId: string): Promise<Holding[]> {
@@ -77,5 +81,9 @@ export class HoldingService {
 
   async findOne(id: string): Promise<Holding | null> {
     return this.holdingModel.findById(id).exec();
+  }
+
+  async findByAssetId(assetId: string): Promise<Holding[]> {
+    return this.holdingModel.find({ assetId }).exec();
   }
 }
