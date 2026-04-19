@@ -6,7 +6,7 @@ import { EventEmitter } from 'events';
 import { PriceService, PriceUpdate } from '../price/price.service';
 import { HoldingService } from '../holding/holding.service';
 import { AssetService } from '../asset/asset.service';
-import { AlertService } from '../alert/alert.service';
+import { AlertService, Alert } from '../alert/alert.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { NavSnapshotDocument } from './nav-snapshot.schema';
@@ -37,6 +37,7 @@ export interface NavEvent {
   thresholdValue?: number;
   direction?: 'above' | 'below';
   currentNav?: number;
+  alert?: Alert;
   timestamp: Date;
 }
 
@@ -275,13 +276,22 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
         userId: alert.userId,
         thresholdValue: alert.thresholdValue,
         direction: alert.direction,
-        currentNav: nav,
+        nav,
         prices,
         timestamp: new Date(),
       };
       
-      this.navUpdates$.next(alertUpdate);
-      this.emit('alertUpdate', alertUpdate);
+      // Include the updated alert object with triggered state
+      const alertWithState = {
+        ...alertUpdate,
+        alert: {
+          ...alert,
+          lastState: 'triggered' as const
+        }
+      };
+      
+      this.navUpdates$.next(alertWithState);
+      this.emit('alertUpdate', alertWithState);
     }
   }
 

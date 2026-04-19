@@ -8,6 +8,8 @@ export interface CreateAlertDto {
   direction: 'above' | 'below';
 }
 
+export { Alert };
+
 @Injectable()
 export class AlertService {
   private readonly logger = new Logger(AlertService.name);
@@ -20,7 +22,7 @@ export class AlertService {
         userId,
         thresholdValue: createAlertDto.thresholdValue,
         direction: createAlertDto.direction,
-        lastState: 'below', // Initial state
+        lastState: 'active', // Initial state - monitoring for threshold crossing
       });
 
       const savedAlert = await alert.save();
@@ -80,14 +82,16 @@ export class AlertService {
           ? currentNav > alert.thresholdValue
           : currentNav < alert.thresholdValue;
 
-        if (isCrossed && (alert as AlertDocument).lastState !== 'above') {
-          // Update alert state
-          await this.update(alert._id.toString(), { lastState: 'above' });
+        const wasTriggered = alert.lastState === 'triggered';
+
+        if (isCrossed && !wasTriggered) {
+          // First time crossing - trigger alert
+          await this.update(alert._id.toString(), { lastState: 'triggered' });
           triggeredAlerts.push(alert);
           this.logger.log(`🚨 Alert triggered for user ${userId}: ${alert.direction} threshold ${alert.thresholdValue}`);
-        } else if (!isCrossed && (alert as AlertDocument).lastState === 'above') {
-          // Update alert state back to below
-          await this.update(alert._id.toString(), { lastState: 'below' });
+        } else if (!isCrossed && wasTriggered) {
+          // Reset alert state when no longer crossed
+          await this.update(alert._id.toString(), { lastState: 'active' });
         }
       }
 

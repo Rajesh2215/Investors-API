@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, NotFoundException, Body } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Param, NotFoundException, Body } from '@nestjs/common';
 import { UserId } from '../utils/user-id.decorator';
 import { AlertService } from './alert.service';
 import { CreateAlertDto } from './dto/create-alert.dto';
@@ -31,6 +31,22 @@ export class AlertController {
       };
     } catch (error) {
       throw new NotFoundException('Failed to retrieve alerts');
+    }
+  }
+
+  @Delete(':alertId')
+  async deleteAlert(@Param('alertId') alertId: string) {
+    try {
+      const deletedAlert = await this.alertService.remove(alertId);
+      if (!deletedAlert) {
+        throw new NotFoundException('Alert not found');
+      }
+      return {
+        message: 'Alert deleted successfully',
+        alert: deletedAlert,
+      };
+    } catch (error) {
+      throw new NotFoundException('Failed to delete alert');
     }
   }
 }
