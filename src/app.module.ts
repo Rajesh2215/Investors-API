@@ -7,6 +7,7 @@ import { UserModule } from './modules/user/user.module';
 import { AssetModule } from './modules/asset/asset.module';
 import { HoldingModule } from './modules/holding/holding.module';
 import { TransactionModule } from './modules/transaction/transaction.module';
+import { PriceModule } from './modules/price/price.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TransactionModule } from './modules/transaction/transaction.module';
     AssetModule,
     HoldingModule,
     TransactionModule,
+    PriceModule,
   ],
 })
 export class AppModule {}
