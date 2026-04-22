@@ -410,9 +410,14 @@ export class NavService extends EventEmitter implements OnModuleInit, OnModuleDe
 
   private async getAllUsersWithNav(): Promise<string[]> {
     try {
-      // For demo purposes, return known users from the system
-      // In a real implementation, you might scan Redis keys or maintain a user list
-      return ['69e4843bcf2b98e041c3fe97']; // Sample user ID
+      // Scan Redis for all NAV keys to find users with NAV data
+      const navKeys = await this.redis.keys('nav:*');
+      const userIds = navKeys
+        .map(key => key.replace('nav:', ''))
+        .filter(userId => userId.length > 0); // Filter out empty strings
+      
+      console.log(`🔍 Found ${userIds.length} users with NAV data: ${userIds}`);
+      return userIds;
     } catch (error) {
       console.error('Failed to get users with NAV:', error);
       return [];

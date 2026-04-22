@@ -16,13 +16,13 @@ export class NavController {
   async getLatestNav(@UserId() userId: string) {
     const nav = await this.navService.getLatestNav(userId);
     
-    if (nav === null) {
-      throw new NotFoundException(`NAV not found for user: ${userId}`);
-    }
+    // if (nav === null) {
+    //   throw new NotFoundException(`NAV not found for user: ${userId}`);
+    // }
     
     return {
       userId,
-      nav,
+      nav: nav || null,
       timestamp: new Date(),
     };
   }
@@ -74,7 +74,7 @@ export class NavController {
         const prices = await this.getCurrentPrices();
         res.write(`data: ${JSON.stringify({ type: 'nav', userId, nav: initialNav, prices, timestamp: new Date() })}\n\n`);
       }
-
+      console.log('-------')
       // Subscribe to NAV updates
       const navSubscription = this.navService.getNavUpdates().subscribe({
         next: (navUpdate) => {

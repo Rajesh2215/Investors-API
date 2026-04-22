@@ -22,6 +22,7 @@ export class TransactionService {
     return this.transactionModel
       .find({ userId })
       .sort({ createdAt: -1 })
+      .populate('assetId')
       .exec();
   }
 
@@ -29,10 +30,11 @@ export class TransactionService {
     return this.transactionModel
       .find({ userId, assetId })
       .sort({ createdAt: -1 })
+      .populate('assetId')
       .exec();
   }
 
   async findOne(id: string): Promise<Transaction | null> {
-    return this.transactionModel.findById(id).exec();
+    return this.transactionModel.findById(id).populate('assetId').exec();
   }
 }

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type TransactionDocument = Transaction & Document;
 
@@ -8,10 +8,10 @@ export class Transaction {
   @Prop({ required: true })
   userId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Types.ObjectId, ref: "Asset" })
   assetId: string;
 
-  @Prop({ required: true, enum: ['BUY', 'SELL'] })
+  @Prop({ required: true, enum: ["BUY", "SELL"] })
   type: string;
 
   @Prop({ required: true, type: Number, min: 0 })

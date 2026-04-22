@@ -2,8 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { Inject } from '@nestjs/common';
 import { NavSnapshotDocument, NavSnapshotSchema } from './nav-snapshot.schema';
 import { NavService } from './nav.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
+import Redis from 'ioredis';
 
 @Injectable()
 export class NavSnapshotService {
@@ -12,6 +15,7 @@ export class NavSnapshotService {
   constructor(
     @InjectModel('NavSnapshot') private readonly navSnapshotModel: Model<NavSnapshotDocument>,
     private readonly navService: NavService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async createSnapshot(userId: string, nav: number): Promise<NavSnapshotDocument> {
@@ -93,12 +97,14 @@ async createScheduledSnapshots(): Promise<void> {
 
 private async getAllUsersWithNav(): Promise<string[]> {
     try {
-      // Get all users who have NAV data in Redis
-      // For now, return known users from the system
-      // In a real implementation, you might scan Redis keys or maintain a user list
+      // Scan Redis for all NAV keys to find users with NAV data
+      const navKeys = await this.redis.keys('nav:*');
+      const userIds = navKeys
+        .map(key => key.replace('nav:', ''))
+        .filter(userId => userId.length > 0); // Filter out empty strings
       
-      // For demo purposes, return known users
-      return ['69e4843bcf2b98e041c3fe97']; // Sample user ID
+      this.logger.log(`🔍 Found ${userIds.length} users with NAV data: ${userIds}`);
+      return userIds;
     } catch (error) {
       this.logger.error('Failed to get users with NAV:', error);
       return [];
